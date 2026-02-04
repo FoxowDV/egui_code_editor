@@ -2,7 +2,7 @@
 
 use eframe::{self, CreationContext, egui};
 use egui::TextEdit;
-use egui_code_editor::{self, CodeEditor, ColorTheme, Completer, Syntax, highlighting::Token};
+use egui_code_editor::{self, CodeEditor, ColorTheme, Completer, Syntax, highlighting::Token, Error};
 
 const THEMES: [ColorTheme; 8] = [
     ColorTheme::AYU,
@@ -214,6 +214,11 @@ impl eframe::App for CodeEditorDemo {
                 h.checkbox(&mut self.numlines_only_natural, "Only Natural Numbering");
             });
 
+            let list_errors = vec![
+                Error{line: 2, description:"aaa".to_string()},
+                Error{line: 6, description:"aaa".to_string()},
+            ];
+
             let mut editor = CodeEditor::default()
                 .id_source("code editor")
                 .with_rows(10)
@@ -223,7 +228,8 @@ impl eframe::App for CodeEditorDemo {
                 .with_numlines(true)
                 .with_numlines_shift(self.shift)
                 .with_numlines_only_natural(self.numlines_only_natural)
-                .vscroll(true);
+                .vscroll(true)
+                .with_errors(list_errors);
 
             editor.show_with_completer(ui, &mut self.code, &mut self.completer);
 

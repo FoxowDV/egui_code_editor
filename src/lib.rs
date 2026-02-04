@@ -97,6 +97,12 @@ pub trait Editor: Hash {
     fn syntax(&self) -> &Syntax;
 }
 
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Error {
+    pub line: usize,
+    pub description: String,
+}
 #[cfg(feature = "editor")]
 #[derive(Clone, Debug, PartialEq)]
 /// CodeEditor struct which stores settings for highlighting.
@@ -112,6 +118,7 @@ pub struct CodeEditor {
     vscroll: bool,
     stick_to_bottom: bool,
     desired_width: f32,
+    errors: Vec<Error>
 }
 
 #[cfg(feature = "editor")]
@@ -140,6 +147,7 @@ impl Default for CodeEditor {
             vscroll: true,
             stick_to_bottom: false,
             desired_width: f32::INFINITY,
+            errors: vec![]
         }
     }
 }
@@ -159,6 +167,7 @@ impl CodeEditor {
     pub fn with_rows(self, rows: usize) -> Self {
         CodeEditor { rows, ..self }
     }
+
 
     /// Use custom Color Theme
     ///
@@ -241,6 +250,13 @@ impl CodeEditor {
             desired_width: width,
             ..self
         }
+    }
+
+    /// List off errors 
+    ///
+    /// **Default: []**
+    pub fn with_errors(self, errors: Vec<Error>) -> Self {
+        CodeEditor { errors, ..self }
     }
 
     /// Stick to bottom
@@ -341,6 +357,7 @@ impl CodeEditor {
     /// Show Code Editor
     pub fn show(&mut self, ui: &mut egui::Ui, text: &mut dyn egui::TextBuffer) -> TextEditOutput {
         use egui::TextBuffer;
+        //dbg!(&self.errors);
 
         let mut text_edit_output: Option<TextEditOutput> = None;
         let mut code_editor = |ui: &mut egui::Ui| {
@@ -357,6 +374,7 @@ impl CodeEditor {
                                 let layout_job = highlight(ui.ctx(), self, text_buffer.as_str());
                                 ui.fonts_mut(|f| f.layout_job(layout_job))
                             };
+
                         let output = egui::TextEdit::multiline(text)
                             .id_source(&self.id)
                             .lock_focus(true)
@@ -365,6 +383,32 @@ impl CodeEditor {
                             .desired_width(self.desired_width)
                             .layouter(&mut layouter)
                             .show(ui);
+
+                        // Error lines
+                        let galley = &output.galley;
+                        let text_pos = output.galley_pos;
+
+                        for error in &self.errors {
+                            let error_line = error.line.saturating_sub(1);
+
+
+                            if error_line < galley.rows.len() {
+                                let row = &galley.rows[error_line];
+                                //let line_height = row.rect().height();
+                                let line_rect = egui::Rect::from_min_max(
+                                    egui::pos2(output.text_clip_rect.min.x, text_pos.y + row.rect().min.y),
+                                    egui::pos2(output.text_clip_rect.max.x, text_pos.y + row.rect().max.y),
+                                );
+
+
+                                ui.painter().rect_filled(
+                                    line_rect,
+                                    0.0,
+                                    egui::Color32::from_rgba_unmultiplied(255, 0, 0, 30),
+                                );
+                            }
+                        }
+
                         text_edit_output = Some(output);
                     });
             });
