@@ -384,9 +384,45 @@ impl CodeEditor {
                             .layouter(&mut layouter)
                             .show(ui);
 
-                        // Error lines
+                        // Background rects
                         let galley = &output.galley;
                         let text_pos = output.galley_pos;
+
+                        if let Some(cursor_range) = output.cursor_range {
+                            let cursor_pos = cursor_range.primary.index;
+                            let text_str = text.as_str();
+                            
+                            // Calculate which line the cursor is on
+                            let mut current_line = 0;
+                            let mut char_count = 0;
+                            for (line_idx, _line) in text_str.lines().enumerate() {
+                                let line_end = text_str[char_count..].find('\n')
+                                    .map(|pos| char_count + pos + 1)
+                                    .unwrap_or(text_str.len());
+                                
+                                if cursor_pos >= char_count && cursor_pos <= line_end {
+                                    current_line = line_idx;
+                                    break;
+                                }
+                                char_count = line_end;
+                            }
+                        
+                            // Draw rect
+                            if current_line < galley.rows.len() {
+                                let row = &galley.rows[current_line];
+                                let line_rect = egui::Rect::from_min_max(
+                                    egui::pos2(output.text_clip_rect.min.x, text_pos.y + row.rect().min.y),
+                                    egui::pos2(output.text_clip_rect.max.x, text_pos.y + row.rect().max.y),
+                                );
+                                
+                                ui.painter().rect_filled(
+                                    line_rect,
+                                    0.0,
+                                    egui::Color32::from_rgba_unmultiplied(128, 128, 128, 20),
+                                );
+                            }
+                        }
+
 
                         for error in &self.errors {
                             let error_line = error.line.saturating_sub(1);
@@ -394,7 +430,6 @@ impl CodeEditor {
 
                             if error_line < galley.rows.len() {
                                 let row = &galley.rows[error_line];
-                                //let line_height = row.rect().height();
                                 let line_rect = egui::Rect::from_min_max(
                                     egui::pos2(output.text_clip_rect.min.x, text_pos.y + row.rect().min.y),
                                     egui::pos2(output.text_clip_rect.max.x, text_pos.y + row.rect().max.y),
@@ -408,6 +443,7 @@ impl CodeEditor {
                                 );
                             }
                         }
+
 
                         text_edit_output = Some(output);
                     });
