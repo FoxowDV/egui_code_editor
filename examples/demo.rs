@@ -231,7 +231,7 @@ impl eframe::App for CodeEditorDemo {
                 .vscroll(true)
                 .with_errors(list_errors);
 
-            editor.show_with_completer(ui, &mut self.code, &mut self.completer);
+            let (_, _, _) = editor.show_with_completer(ui, &mut self.code, &mut self.completer);
 
             ui.separator();
             ui.horizontal(|h| {

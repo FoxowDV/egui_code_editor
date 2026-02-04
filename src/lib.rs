@@ -346,11 +346,11 @@ impl CodeEditor {
         ui: &mut egui::Ui,
         text: &mut dyn egui::TextBuffer,
         completer: &mut Completer,
-    ) -> TextEditOutput {
+    ) -> (TextEditOutput, usize, usize) {
         completer.handle_input(ui.ctx());
         let mut editor_output = self.show(ui, text);
         completer.show(&self.syntax, &self.theme, self.fontsize, &mut editor_output.0);
-        editor_output.0
+        editor_output
     }
 
     #[cfg(feature = "egui")]
@@ -399,8 +399,6 @@ impl CodeEditor {
                             for (line_idx, line) in text_str.split('\n').enumerate() {
                                 let line_end = line_start + line.len();
                                 
-                                dbg!(&cursor_pos);
-                                dbg!(&line_idx);
                                 if cursor_pos >= line_start && cursor_pos <= line_end {
                                     cursor_line = line_idx + 1; 
                                     cursor_col = cursor_pos - line_start;
