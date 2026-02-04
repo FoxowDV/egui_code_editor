@@ -349,14 +349,16 @@ impl CodeEditor {
     ) -> TextEditOutput {
         completer.handle_input(ui.ctx());
         let mut editor_output = self.show(ui, text);
-        completer.show(&self.syntax, &self.theme, self.fontsize, &mut editor_output);
-        editor_output
+        completer.show(&self.syntax, &self.theme, self.fontsize, &mut editor_output.0);
+        editor_output.0
     }
 
     #[cfg(feature = "egui")]
     /// Show Code Editor
-    pub fn show(&mut self, ui: &mut egui::Ui, text: &mut dyn egui::TextBuffer) -> TextEditOutput {
+    pub fn show(&mut self, ui: &mut egui::Ui, text: &mut dyn egui::TextBuffer) -> (TextEditOutput, usize, usize) {
         use egui::TextBuffer;
+        let mut cursor_line = 0;
+        let mut cursor_col = 0;
         //dbg!(&self.errors);
 
         let mut text_edit_output: Option<TextEditOutput> = None;
@@ -393,33 +395,34 @@ impl CodeEditor {
                             let text_str = text.as_str();
                             
                             // Calculate which line the cursor is on
-                            let mut current_line = 0;
-                            let mut char_count = 0;
-                            for (line_idx, _line) in text_str.lines().enumerate() {
-                                let line_end = text_str[char_count..].find('\n')
-                                    .map(|pos| char_count + pos + 1)
-                                    .unwrap_or(text_str.len());
+                            let mut line_start = 0;
+                            for (line_idx, line) in text_str.split('\n').enumerate() {
+                                let line_end = line_start + line.len();
                                 
-                                if cursor_pos >= char_count && cursor_pos <= line_end {
-                                    current_line = line_idx;
+                                dbg!(&cursor_pos);
+                                dbg!(&line_idx);
+                                if cursor_pos >= line_start && cursor_pos <= line_end {
+                                    cursor_line = line_idx + 1; 
+                                    cursor_col = cursor_pos - line_start;
+                                    
+                                    // rect
+                                    if line_idx < galley.rows.len() {
+                                        let row = &galley.rows[line_idx];
+                                        let line_rect = egui::Rect::from_min_max(
+                                            egui::pos2(output.text_clip_rect.min.x, text_pos.y + row.rect().min.y),
+                                            egui::pos2(output.text_clip_rect.max.x, text_pos.y + row.rect().max.y),
+                                        );
+                                        
+                                        ui.painter().rect_filled(
+                                            line_rect,
+                                            0.0,
+                                            egui::Color32::from_rgba_unmultiplied(128, 128, 128, 20),
+                                        );
+                                    }
                                     break;
                                 }
-                                char_count = line_end;
-                            }
-                        
-                            // Draw rect
-                            if current_line < galley.rows.len() {
-                                let row = &galley.rows[current_line];
-                                let line_rect = egui::Rect::from_min_max(
-                                    egui::pos2(output.text_clip_rect.min.x, text_pos.y + row.rect().min.y),
-                                    egui::pos2(output.text_clip_rect.max.x, text_pos.y + row.rect().max.y),
-                                );
                                 
-                                ui.painter().rect_filled(
-                                    line_rect,
-                                    0.0,
-                                    egui::Color32::from_rgba_unmultiplied(128, 128, 128, 20),
-                                );
+                                line_start = line_end + 1; // +1 for the newline character
                             }
                         }
 
@@ -458,7 +461,7 @@ impl CodeEditor {
             code_editor(ui);
         }
 
-        text_edit_output.expect("TextEditOutput should exist at this point")
+        (text_edit_output.expect("TextEditOutput should exist at this point"), cursor_line, cursor_col)
     }
 }
 
